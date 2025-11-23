@@ -17,6 +17,7 @@ export const VoiceInterface = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const animationFrameRef = useRef<number>();
 
   useEffect(() => {
@@ -51,7 +52,7 @@ export const VoiceInterface = () => {
         audioRef.current = new Audio();
       }
 
-      // Setup audio analysis for playback
+      // Setup audio analysis for playback (only once)
       if (!audioContextRef.current) {
         audioContextRef.current = new AudioContext();
       }
@@ -62,11 +63,15 @@ export const VoiceInterface = () => {
       }
 
       const audio = audioRef.current;
-      audio.src = audioUrl;
+      
+      // Only create MediaElementSource once
+      if (!sourceRef.current) {
+        sourceRef.current = audioContextRef.current.createMediaElementSource(audio);
+        sourceRef.current.connect(analyserRef.current);
+        analyserRef.current.connect(audioContextRef.current.destination);
+      }
 
-      const source = audioContextRef.current.createMediaElementSource(audio);
-      source.connect(analyserRef.current);
-      analyserRef.current.connect(audioContextRef.current.destination);
+      audio.src = audioUrl;
 
       audio.onplay = () => {
         setIsPlaying(true);
