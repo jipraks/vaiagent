@@ -23,6 +23,12 @@ export const useAudioRecorder = () => {
 
   const startRecording = useCallback(async () => {
     try {
+      // Make sure previous recording is fully stopped
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        console.warn('Previous recording still active, waiting...');
+        return;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
@@ -41,11 +47,12 @@ export const useAudioRecorder = () => {
       // Start analyzing
       analyzeAudio();
 
-      // Setup recorder
+      // Setup recorder with fresh chunks array
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm',
       });
       
+      // CRITICAL: Clear chunks when starting new recording
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
@@ -70,12 +77,19 @@ export const useAudioRecorder = () => {
         return;
       }
 
-      mediaRecorderRef.current.onstop = () => {
+      const recorder = mediaRecorderRef.current;
+
+      recorder.onstop = () => {
+        // Create blob from current chunks
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        
+        console.log('Recording stopped, chunks:', audioChunksRef.current.length, 'blob size:', audioBlob.size);
+        
+        // Clear chunks AFTER creating the blob
         audioChunksRef.current = [];
         
         // Stop all tracks
-        mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
+        recorder.stream.getTracks().forEach(track => track.stop());
         
         // Clean up audio analysis
         if (animationFrameRef.current) {
@@ -87,10 +101,14 @@ export const useAudioRecorder = () => {
         
         setIsRecording(false);
         setAudioLevel(0);
+        
+        // Clear the recorder reference
+        mediaRecorderRef.current = null;
+        
         resolve(audioBlob);
       };
 
-      mediaRecorderRef.current.stop();
+      recorder.stop();
     });
   }, []);
 
