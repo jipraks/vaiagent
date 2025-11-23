@@ -7,6 +7,19 @@ interface VoiceVisualizerProps {
   className?: string;
 }
 
+// Helper function to get CSS variable value
+const getCSSVariable = (variable: string): string => {
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue(variable)
+    .trim();
+  
+  // Convert HSL values to proper color string
+  if (value) {
+    return `hsl(${value})`;
+  }
+  return '#000000'; // fallback
+};
+
 export const VoiceVisualizer = ({ isActive, audioLevel = 0, className }: VoiceVisualizerProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
@@ -23,6 +36,12 @@ export const VoiceVisualizer = ({ isActive, audioLevel = 0, className }: VoiceVi
     const centerY = canvas.height / 2;
     const radius = Math.min(centerX, centerY) - 20;
 
+    // Get CSS variable colors once
+    const primaryColor = getCSSVariable('--primary');
+    const secondaryColor = getCSSVariable('--secondary');
+    const accentColor = getCSSVariable('--accent');
+    const backgroundColor = getCSSVariable('--background');
+
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -34,11 +53,11 @@ export const VoiceVisualizer = ({ isActive, audioLevel = 0, className }: VoiceVi
 
       // Create gradient disc
       const gradient = ctx.createConicGradient(0, centerX, centerY);
-      gradient.addColorStop(0, 'hsl(var(--primary))');
-      gradient.addColorStop(0.25, 'hsl(var(--accent))');
-      gradient.addColorStop(0.5, 'hsl(var(--primary))');
-      gradient.addColorStop(0.75, 'hsl(var(--secondary))');
-      gradient.addColorStop(1, 'hsl(var(--primary))');
+      gradient.addColorStop(0, primaryColor);
+      gradient.addColorStop(0.25, accentColor);
+      gradient.addColorStop(0.5, primaryColor);
+      gradient.addColorStop(0.75, secondaryColor);
+      gradient.addColorStop(1, primaryColor);
 
       // Draw main disc
       ctx.beginPath();
@@ -62,14 +81,14 @@ export const VoiceVisualizer = ({ isActive, audioLevel = 0, className }: VoiceVi
         ctx.closePath();
         
         const alpha = i % 2 === 0 ? 0.3 : 0.1;
-        ctx.fillStyle = `hsla(var(--background) / ${alpha})`;
+        ctx.fillStyle = `${backgroundColor}${Math.floor(alpha * 255).toString(16).padStart(2, '0')}`;
         ctx.fill();
       }
 
       // Draw center circle
       ctx.beginPath();
       ctx.arc(centerX, centerY, 60, 0, Math.PI * 2);
-      ctx.fillStyle = 'hsl(var(--background))';
+      ctx.fillStyle = backgroundColor;
       ctx.fill();
 
       ctx.restore();
